@@ -1,0 +1,5 @@
+---
+ansible_connection: local
+ansible_host: localhost
+
+license_copyright_holder: "Lennard Beers"

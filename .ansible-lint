@@ -1,0 +1,18 @@
+# Ansible Lint Configuration
+---
+# Disable specific rules
+skip_list:
+  - var-naming[no-role-prefix] # Allow variables without role prefix
+  - command-instead-of-module
+
+# You can add other rules to skip here if needed
+# Example:
+# - yaml[line-length]  # Allow long lines in YAML
+# - name[casing]       # Allow different naming conventions
+
+# Set other configuration options
+warn_list:
+  - experimental # Show warnings for experimental rules
+
+# Use default rules except for those in skip_list
+use_default_rules: true

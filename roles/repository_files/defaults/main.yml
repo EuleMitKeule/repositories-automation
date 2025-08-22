@@ -1,0 +1,5 @@
+---
+repo_files_commit_message: "chore: automatic update via ansible"
+repo_files_base_path: "{{ playbook_dir }}/files"
+repo_temp_dir: "/tmp/ansible-repo-{{ inventory_hostname }}"
+github_repo_ssh_url: "git@github.com:{{ github_username }}/{{ inventory_hostname }}.git"

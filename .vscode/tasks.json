@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "📦 Install Ansible requirements",
+      "type": "shell",
+      "command": "./scripts/install_requirements.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "🔓 Decrypt all secrets",
+      "type": "shell",
+      "command": "./scripts/decrypt_all_secrets.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "🔐 Encrypt all secrets",
+      "type": "shell",
+      "command": "./scripts/encrypt_all_secrets.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "🚀 Deploy all stacks",
+      "type": "shell",
+      "command": "./scripts/deploy_all.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

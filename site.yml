@@ -1,0 +1,10 @@
+---
+- name: Ensure GitHub repositories exist
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - "{{ 'secrets/github.yml' | vault_fallback }}"
+  roles:
+    - github_repository
+    - github_repository_tags
+    - repository_files

@@ -1,0 +1,82 @@
+---
+# This task processes a single file with precedence resolution
+# Variables available: file_item (the file dict from find module)
+
+- name: Extract relative path from file
+  ansible.builtin.set_fact:
+    file_relative_path: "{{ file_item.path | regex_replace('^' + repo_files_base_path + '/', '') }}"
+
+- name: Extract the group/host part and the actual file path
+  ansible.builtin.set_fact:
+    file_parts: "{{ file_relative_path.split('/') }}"
+
+- name: Skip if file is not in a valid group/host directory
+  ansible.builtin.meta: end_play
+  when: file_parts | length < 2
+
+- name: Extract the actual file path (everything after the first directory)
+  ansible.builtin.set_fact:
+    actual_file_path: "{{ file_parts[1:] | join('/') }}"
+
+- name: Determine file precedence paths to check
+  ansible.builtin.set_fact:
+    precedence_paths:
+      - "{{ repo_files_base_path }}/{{ inventory_hostname }}/{{ actual_file_path }}"
+      - "{{ repo_files_base_path }}/all/{{ actual_file_path }}"
+
+- name: Find the highest precedence file that exists
+  ansible.builtin.stat:
+    path: "{{ precedence_item }}"
+  register: precedence_check
+  loop: "{{ precedence_paths }}"
+  loop_control:
+    loop_var: precedence_item
+
+- name: Determine which file to use
+  ansible.builtin.set_fact:
+    selected_file: "{{ file_check.precedence_item }}"
+  loop: "{{ precedence_check.results }}"
+  when: file_check.stat.exists
+  loop_control:
+    loop_var: file_check
+
+- name: Process file if one was selected
+  when: selected_file is defined
+  block:
+    - name: Ensure target directory exists in repository
+      ansible.builtin.file:
+        path: "{{ repo_temp_dir }}/{{ actual_file_path | dirname }}"
+        state: directory
+        mode: '0755'
+      when: actual_file_path | dirname != ""
+
+    - name: Check if selected file is a template
+      ansible.builtin.set_fact:
+        is_template: "{{ '.j2.' in selected_file or selected_file.endswith('.j2') or selected_file.startswith('j2.') }}"
+        final_dest_path: "{{
+          actual_file_path
+          | regex_replace('(.+)\\.j2\\.(.+)', '\\1.\\2')
+          | regex_replace('(.+)\\.j2$', '\\1')
+          | regex_replace('^j2\\.(.+)$', '\\1')
+          }}"
+
+    - name: Process template file
+      ansible.builtin.template:
+        src: "{{ selected_file }}"
+        dest: "{{ repo_temp_dir }}/{{ final_dest_path }}"
+        mode: preserve
+      when: is_template
+
+    - name: Copy regular file to repository
+      ansible.builtin.copy:
+        src: "{{ selected_file }}"
+        dest: "{{ repo_temp_dir }}/{{ actual_file_path }}"
+        mode: preserve
+      when: not is_template
+
+    - name: Display which file was selected
+      ansible.builtin.debug:
+        msg: >-
+          Selected {{ 'template' if is_template else 'file' }} {{ selected_file }}
+          for {{ final_dest_path if is_template else actual_file_path }}
+          in {{ inventory_hostname }}

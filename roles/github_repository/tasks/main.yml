@@ -1,0 +1,107 @@
+---
+- name: Ensure GitHub repository exists
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_username }}/{{ inventory_hostname }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    status_code: [200, 404]
+  register: repo_check
+
+- name: Create GitHub repository if it doesn't exist
+  ansible.builtin.uri:
+    url: "https://api.github.com/user/repos"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ inventory_hostname }}"
+      description: "{{ repo_description }}"
+      private: "{{ repo_private }}"
+      has_issues: "{{ repo_has_issues }}"
+      has_projects: "{{ repo_has_projects }}"
+      has_wiki: "{{ repo_has_wiki }}"
+      has_downloads: "{{ repo_has_downloads }}"
+      auto_init: "{{ repo_auto_init }}"
+      default_branch: "{{ repo_default_branch }}"
+      allow_squash_merge: "{{ repo_allow_squash_merge }}"
+      allow_merge_commit: "{{ repo_allow_merge_commit }}"
+      allow_rebase_merge: "{{ repo_allow_rebase_merge }}"
+      delete_branch_on_merge: "{{ repo_delete_branch_on_merge }}"
+      has_discussions: "{{ repo_has_discussions }}"
+    status_code: 201
+  when: repo_check.status == 404
+  register: repo_created
+
+- name: Update existing repository settings (excluding default_branch)
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_username }}/{{ inventory_hostname }}"
+    method: PATCH
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ inventory_hostname }}"
+      description: "{{ repo_description }}"
+      private: "{{ repo_private }}"
+      has_issues: "{{ repo_has_issues }}"
+      has_projects: "{{ repo_has_projects }}"
+      has_wiki: "{{ repo_has_wiki }}"
+      has_downloads: "{{ repo_has_downloads }}"
+      allow_squash_merge: "{{ repo_allow_squash_merge }}"
+      allow_merge_commit: "{{ repo_allow_merge_commit }}"
+      allow_rebase_merge: "{{ repo_allow_rebase_merge }}"
+      delete_branch_on_merge: "{{ repo_delete_branch_on_merge }}"
+      has_discussions: "{{ repo_has_discussions }}"
+    status_code: 200
+  when: repo_check.status == 200
+  register: repo_updated
+
+- name: Get repository branches to check if default branch exists
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_username }}/{{ inventory_hostname }}/branches"
+    method: GET
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    status_code: 200
+  when: repo_check.status == 200
+  register: repo_branches
+
+- name: Update default branch if branch exists
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_username }}/{{ inventory_hostname }}"
+    method: PATCH
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      default_branch: "{{ repo_default_branch }}"
+    status_code: 200
+  when:
+    - repo_check.status == 200
+    - repo_branches is defined
+    - repo_branches.json | selectattr('name', 'equalto', repo_default_branch) | list | length > 0
+  register: default_branch_updated
+
+- name: Display repository status
+  ansible.builtin.debug:
+    msg: >-
+      {% if repo_check.status == 200 and (repo_updated.changed or default_branch_updated.changed) %}
+      Repository {{ github_username }}/{{ inventory_hostname }} updated successfully
+      {% elif repo_check.status == 200 and repo_branches is defined and
+             repo_branches.json | selectattr('name', 'equalto', repo_default_branch) | list | length == 0 %}
+      Repository {{ github_username }}/{{ inventory_hostname }} exists but default branch '{{ repo_default_branch }}' not found - other settings updated
+      {% elif repo_check.status == 200 %}
+      Repository {{ github_username }}/{{ inventory_hostname }} already exists with correct settings
+      {% elif repo_created is defined and repo_created.changed %}
+      Repository {{ github_username }}/{{ inventory_hostname }} created successfully
+      {% endif %}

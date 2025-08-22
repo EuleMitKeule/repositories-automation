@@ -1,0 +1,36 @@
+repos:
+  - repo: local
+    hooks:
+      - id: encrypt-secrets
+        name: 🔐 Encrypt all secrets
+        entry: ./scripts/encrypt_all_secrets.sh
+        language: script
+        always_run: true
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: check-unencrypted-secrets
+        name: 🔍 Check for unencrypted secrets
+        entry: bash
+        args:
+          - -c
+          - |
+            set -euo pipefail
+            echo "🔐 [pre-commit] Checking for unencrypted secrets..."
+
+            # Find any staged decrypted files (bad!)
+            UNENCRYPTED=$(git diff --cached --name-only --diff-filter=ACM | grep '^secrets/.*\.\(yml\|json\|pub\)$' | grep -v '\.vault\.' || true)
+
+            if [[ -n "$UNENCRYPTED" ]]; then
+              echo "🚨 ERROR: These plaintext secrets are still staged:"
+              echo "$UNENCRYPTED"
+              echo "❌ Aborting commit. You must only commit .vault.* secrets."
+              exit 1
+            fi
+
+            echo "✅ All secrets encrypted & safe to commit."
+            exit 0
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages: [pre-commit]

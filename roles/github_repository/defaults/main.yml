@@ -1,0 +1,19 @@
+---
+repo_description: "Repository managed by Ansible"
+repo_private: true
+repo_has_issues: true
+repo_has_projects: true
+repo_has_wiki: true
+repo_has_downloads: true
+repo_auto_init: true
+repo_default_branch: "master"
+repo_allow_squash_merge: true
+repo_allow_merge_commit: true
+repo_allow_rebase_merge: true
+repo_delete_branch_on_merge: true
+repo_has_discussions: true
+repo_security_and_analysis:
+  secret_scanning:
+    status: "enabled"
+  secret_scanning_push_protection:
+    status: "enabled"
