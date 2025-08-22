@@ -1,5 +1,6 @@
 ---
 repo_description: "Dummy python package."
+repo_private: false
 repo_topics:
   - "python"
   - "package"

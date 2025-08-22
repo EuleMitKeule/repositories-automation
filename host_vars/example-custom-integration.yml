@@ -1,5 +1,6 @@
 ---
 repo_description: "Dummy home assistant integration."
+repo_private: false
 repo_topics:
   - "integration"
   - "api"

@@ -4,20 +4,29 @@
     filter: "ansible_date_time"
   when: ansible_date_time is not defined
 
-- name: Create temporary directory for repository
+- name: Clean up and create temporary directory for repository
+  ansible.builtin.shell:
+    cmd: "rm -rf '{{ repo_temp_dir }}' && mkdir -p '{{ repo_temp_dir }}'"
+  changed_when: false
+
+- name: Decrypt SSH key to temporary file
+  ansible.builtin.shell:
+    cmd: "ansible-vault view '{{ './secrets/id_rsa' | vault_fallback }}' > '{{ repo_temp_dir }}/.ssh_key'"
+  changed_when: false
+
+- name: Set proper permissions on SSH key
   ansible.builtin.file:
-    path: "{{ repo_temp_dir }}"
-    state: directory
-    mode: '0755'
+    path: "{{ repo_temp_dir }}/.ssh_key"
+    mode: '0600'
   changed_when: false
 
 - name: Clone repository
   ansible.builtin.git:
     repo: "{{ github_repo_ssh_url }}"
-    dest: "{{ repo_temp_dir }}"
+    dest: "{{ repo_temp_dir }}/repo"
     version: "{{ repo_default_branch | default('main') }}"
     force: true
-    key_file: "{{ './secrets/id_rsa' | vault_fallback }}"
+    key_file: "{{ repo_temp_dir }}/.ssh_key"
     accept_hostkey: true
   changed_when: false
 
@@ -40,14 +49,14 @@
 - name: Check if there are any changes to commit
   ansible.builtin.command:
     cmd: git status --porcelain
-    chdir: "{{ repo_temp_dir }}"
+    chdir: "{{ repo_temp_dir }}/repo"
   register: git_status
   changed_when: false
 
 - name: Configure git user for repository only
   ansible.builtin.command:
     cmd: "git config {{ item.name }} '{{ item.value }}'"
-    chdir: "{{ repo_temp_dir }}"
+    chdir: "{{ repo_temp_dir }}/repo"
   loop:
     - { name: "user.name", value: "{{ git_name }}" }
     - { name: "user.email", value: "{{ git_email }}" }
@@ -60,21 +69,21 @@
     - name: Stage all changes
       ansible.builtin.command:
         cmd: git add .
-        chdir: "{{ repo_temp_dir }}"
+        chdir: "{{ repo_temp_dir }}/repo"
       changed_when: false
 
     - name: Commit changes
       ansible.builtin.command:
         cmd: "git commit -m '{{ repo_files_commit_message }}'"
-        chdir: "{{ repo_temp_dir }}"
+        chdir: "{{ repo_temp_dir }}/repo"
       changed_when: true
 
     - name: Push changes
       ansible.builtin.command:
         cmd: "git push origin {{ repo_default_branch }}"
-        chdir: "{{ repo_temp_dir }}"
+        chdir: "{{ repo_temp_dir }}/repo"
       environment:
-        GIT_SSH_COMMAND: "ssh -i {{ './secrets/id_rsa' | vault_fallback }} -o StrictHostKeyChecking=no"
+        GIT_SSH_COMMAND: "ssh -i {{ repo_temp_dir }}/.ssh_key -o StrictHostKeyChecking=no"
       changed_when: false
 
 - name: Clean up temporary directory

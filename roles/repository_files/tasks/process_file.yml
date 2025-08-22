@@ -45,7 +45,7 @@
   block:
     - name: Ensure target directory exists in repository
       ansible.builtin.file:
-        path: "{{ repo_temp_dir }}/{{ actual_file_path | dirname }}"
+        path: "{{ repo_temp_dir }}/repo/{{ actual_file_path | dirname }}"
         state: directory
         mode: '0755'
       when: actual_file_path | dirname != ""
@@ -63,14 +63,14 @@
     - name: Process template file
       ansible.builtin.template:
         src: "{{ selected_file }}"
-        dest: "{{ repo_temp_dir }}/{{ final_dest_path }}"
+        dest: "{{ repo_temp_dir }}/repo/{{ final_dest_path }}"
         mode: preserve
       when: is_template
 
     - name: Copy regular file to repository
       ansible.builtin.copy:
         src: "{{ selected_file }}"
-        dest: "{{ repo_temp_dir }}/{{ actual_file_path }}"
+        dest: "{{ repo_temp_dir }}/repo/{{ actual_file_path }}"
         mode: preserve
       when: not is_template
 
